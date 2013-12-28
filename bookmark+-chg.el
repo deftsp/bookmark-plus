@@ -4,11 +4,11 @@
 ;; Description: Change logs for Bookmark+ libraries.
 ;; Author: Drew Adams
 ;; Maintainer: Drew Adams (concat "drew.adams" "@" "oracle" ".com")
-;; Copyright (C) 2000-2013, Drew Adams, all rights reserved.
+;; Copyright (C) 2000-2014, Drew Adams, all rights reserved.
 ;; Created: Fri Sep 15 07:58:41 2000
-;; Last-Updated: Mon Oct  7 16:31:54 2013 (-0700)
+;; Last-Updated: Thu Dec 26 08:31:30 2013 (-0800)
 ;;           By: dradams
-;;     Update #: 15436
+;;     Update #: 15457
 ;; URL: http://www.emacswiki.org/bookmark+-chg.el
 ;; Doc URL: http://www.emacswiki.org/BookmarkPlus
 ;; Keywords: bookmarks, bookmark+
@@ -146,6 +146,17 @@
  
 ;;;(@* "CHANGE LOG FOR `bookmark+-1.el'")
 ;;
+;; 2013/11/21 dadams
+;;    bmkp-url-target-set: Added argument NO-OVERWRITE-P.
+;;    bmkp-(url|file)-target-set: Numeric prefix arg means do not overwrite.  N<0 means use full name.
+;; 2013/11/05 dadams
+;;     Added: bmkp-create-dired-bookmarks-recursive.
+;;     bookmark-set: Added optional arg NO-UPDATE-P - pass it to bookmark-store.
+;; 2013/10/29 dadams
+;;     Added: bmkp-pop-to-readable-marker, bmkp-readable-marker, bmkp-bookmark-set-confirm-overwrite,
+;;            bmkp-bookmark-set-confirms-overwrite-p.
+;;     bookmark-set: Ask for overwrite confirmation if plain prefix arg and bookmark exists.
+;;     bmkp-menu-bar-set-bookmark: Use bmkp-bookmark-set-confirm-overwrite, not bookmark-set.
 ;; 2013/10/07 dadams
 ;;     bmkp-edit-bookmark-records-send: Move to line of current bmk, if only one.
 ;; 2013/08/09 dadams
@@ -955,6 +966,12 @@
  
 ;;;(@* "CHANGE LOG FOR `bookmark+-bmu.el'")
 ;;
+;; 2013/12/13 dadams
+;;     bmkp-bmenu-mode-line:
+;;       To avoid Emacs crashes from bug #12867: Do not define it for Emacs 22-23, and wrap
+;;                                               condition-case around the whole function body.
+;; 2013/12/11 dadams
+;;     bmkp-bmenu-mode-line: Protect %360l (line) hack with condition-case.
 ;; 2013/10/07 dadams
 ;;     bmkp-bmenu-edit-marked: If no marked bmks, mark the current line bmk, to start with.
 ;;                             Use correct buffer when go to point-min.
@@ -1368,6 +1385,10 @@
  
 ;;;(@* "CHANGE LOG FOR `bookmark+-key.el'")
 ;;
+;; 2013/10/29 dadams
+;;     Bind bookmark-set's previous keys to bmkp-bookmark-set-confirm-overwrite.
+;;     Bind bookmark-set to C-x r M, not C-x r m.
+;;     bmkp-menu-bar-set-bookmark: Use bmkp-bookmark-set-confirm-overwrite, not bookmark-set.
 ;; 2013/07/20 dadams
 ;;     Moved items to new submenus: New/Update and Delete.
 ;; 2013/06/30 dadams

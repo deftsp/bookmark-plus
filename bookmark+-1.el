@@ -4,12 +4,12 @@
 ;; Description: First part of package Bookmark+.
 ;; Author: Drew Adams, Thierry Volpiatto
 ;; Maintainer: Drew Adams (concat "drew.adams" "@" "oracle" ".com")
-;; Copyright (C) 2000-2013, Drew Adams, all rights reserved.
+;; Copyright (C) 2000-2014, Drew Adams, all rights reserved.
 ;; Copyright (C) 2009, Thierry Volpiatto, all rights reserved.
 ;; Created: Mon Jul 12 13:43:55 2010 (-0700)
-;; Last-Updated: Mon Oct  7 16:25:39 2013 (-0700)
+;; Last-Updated: Thu Dec 26 08:30:57 2013 (-0800)
 ;;           By: dradams
-;;     Update #: 6963
+;;     Update #: 7054
 ;; URL: http://www.emacswiki.org/bookmark+-1.el
 ;; Doc URL: http://www.emacswiki.org/BookmarkPlus
 ;; Keywords: bookmarks, bookmark+, placeholders, annotations, search, info, url, w3m, gnus
@@ -113,9 +113,11 @@
 ;;    `bmkp-autonamed-this-buffer-jump-other-window',
 ;;    `bmkp-bookmark-a-file' `bmkp-bookmark-file-jump',
 ;;    `bmkp-bookmark-list-jump',
+;;    `bmkp-bookmark-set-confirm-overwrite',
 ;;    `bmkp-choose-navlist-from-bookmark-list',
 ;;    `bmkp-choose-navlist-of-type', `bmkp-compilation-target-set',
 ;;    `bmkp-compilation-target-set-all', `bmkp-copy-tags',
+;;    `bmkp-create-dired-bookmarks-recursive',
 ;;    `bmkp-crosshairs-highlight', `bmkp-cycle',
 ;;    `bmkp-cycle-autonamed', `bmkp-cycle-autonamed-other-window',
 ;;    `bmkp-cycle-bookmark-list',
@@ -423,18 +425,18 @@
 ;;    `bmkp-orphaned-local-file-bookmark-p',
 ;;    `bmkp-orphaned-remote-file-alist-only',
 ;;    `bmkp-orphaned-remote-file-bookmark-p',
-;;    `bmkp-position-after-whitespace',
+;;    `bmkp-pop-to-readable-marker', `bmkp-position-after-whitespace',
 ;;    `bmkp-position-before-whitespace', `bmkp-position-cp',
 ;;    `bmkp-position-post-context',
 ;;    `bmkp-position-post-context-region',
 ;;    `bmkp-position-pre-context', `bmkp-position-pre-context-region',
-;;    `bmkp-printable-vars+vals', `bmkp-readable-p',
-;;    `bmkp-read-bookmark-file-name', `bmkp-read-regexp',
-;;    `bmkp-read-tag-completing', `bmkp-read-tags',
-;;    `bmkp-read-tags-completing', `bmkp-read-variable',
-;;    `bmkp-read-variables-completing', `bmkp-record-visit',
-;;    `bmkp-refresh-latest-bookmark-list', `bmkp-refresh-menu-list',
-;;    `bmkp-refresh/rebuild-menu-list',
+;;    `bmkp-printable-vars+vals', `bmkp-readable-marker',
+;;    `bmkp-readable-p', `bmkp-read-bookmark-file-name',
+;;    `bmkp-read-regexp', `bmkp-read-tag-completing',
+;;    `bmkp-read-tags', `bmkp-read-tags-completing',
+;;    `bmkp-read-variable', `bmkp-read-variables-completing',
+;;    `bmkp-record-visit', `bmkp-refresh-latest-bookmark-list',
+;;    `bmkp-refresh-menu-list', `bmkp-refresh/rebuild-menu-list',
 ;;    `bmkp-regexp-filtered-annotation-alist-only',
 ;;    `bmkp-regexp-filtered-bookmark-name-alist-only',
 ;;    `bmkp-regexp-filtered-file-name-alist-only',
@@ -477,9 +479,11 @@
 ;;    `bmkp-auto-idle-bookmark-mode-timer',
 ;;    `bmkp-auto-idle-bookmarks', `bmkp-autonamed-history',
 ;;    `bmkp-autotemp-all-when-set-p', `bmkp-bookmark-file-history',
-;;    `bmkp-bookmark-list-history', `bmkp-current-bookmark-file',
-;;    `bmkp-current-nav-bookmark', `bmkp-desktop-history',
-;;    `bmkp-dired-history', `bmkp-edit-bookmark-record-mode-map',
+;;    `bmkp-bookmark-list-history',
+;;    `bmkp-bookmark-set-confirms-overwrite-p',
+;;    `bmkp-current-bookmark-file', `bmkp-current-nav-bookmark',
+;;    `bmkp-desktop-history', `bmkp-dired-history',
+;;    `bmkp-edit-bookmark-record-mode-map',
 ;;    `bmkp-edit-bookmark-records-mode-map',
 ;;    `bmkp-edit-bookmark-records-number', `bmkp-edit-tags-mode-map',
 ;;    `bmkp-file-bookmark-handlers', `bmkp-file-history',
@@ -1005,7 +1009,7 @@ there is already another window showing the buffer."
 
 ;;;###autoload (autoload 'bmkp-prompt-for-tags-flag "bookmark+")
 (defcustom bmkp-prompt-for-tags-flag nil
-  "*Non-nil means `bookmark-set' prompts for tags (when called interactively)."
+  "*Non-nil means prompt for tags when setting a bookmark interactively."
   :type 'boolean :group 'bookmark-plus)
 
 ;;;###autoload (autoload 'bmkp-region-search-size "bookmark+")
@@ -1332,6 +1336,9 @@ make it so, do this:
 
 (defvar bmkp-copied-tags ()
   "List of tags copied from a bookmark, for pasting to other bookmarks.")
+
+(defvar bmkp-bookmark-set-confirms-overwrite-p nil
+  "Non-nil means `bookmark-set' requires confirmation about overwriting.")
 
 (defvar bmkp-current-bookmark-file bookmark-default-file
   "Current bookmark file.
@@ -2039,19 +2046,21 @@ a text property.  Point is irrelevant and unaffected."
 
 ;; REPLACES ORIGINAL in `bookmark.el'.
 ;;
-;; 1. Use `bookmark-make-record'.
-;; 2. Use special default prompts for active region, W3M, and Gnus.
-;; 3. Use function `bmkp-new-bookmark-default-names', in addition to the name that
-;;    `bookmark-make-record' comes up with, as the list of default values.
-;; 4. Use `bmkp-completing-read-lax', choosing from current buffer's bookmarks.
-;; 5. Numeric prefix arg (diff from plain): all bookmarks as completion candidates.
-;; 6. Prompt for tags if `bmkp-prompt-for-tags-flag' is non-nil.
-;; 7. Possibly highlight bookmark and other bookmarks in buffer, per `bmkp-auto-light-when-set'.
-;; 8. Make bookmark temporary, if `bmkp-autotemp-bookmark-predicates' says to.
-;; 9. Run `bmkp-after-set-hook'.
+;;  1. Use `bookmark-make-record'.
+;;  2. Use special default prompts for active region, W3M, and Gnus.
+;;  3. Use function `bmkp-new-bookmark-default-names', in addition to the name that
+;;     `bookmark-make-record' comes up with, as the list of default values.
+;;  4. Use `bmkp-completing-read-lax', choosing from current buffer's bookmarks.
+;;  5. Numeric prefix arg (diff from plain): all bookmarks as completion candidates.
+;;  6. Ask for confirmation if (a) not plain `C-u' and (b) NAME names an existing bookmark.
+;;  7. Added optional args INTERACTIVEP and NO-UPDATE-P.
+;;  8. Prompt for tags if `bmkp-prompt-for-tags-flag' is non-nil.
+;;  9. Possibly highlight bookmark and other bookmarks in buffer, per `bmkp-auto-light-when-set'.
+;; 10. Make bookmark temporary, if `bmkp-autotemp-bookmark-predicates' says to.
+;; 11. Run `bmkp-after-set-hook'.
 ;;
 ;;;###autoload (autoload 'bookmark-set "bookmark+")
-(defun bookmark-set (&optional name parg interactivep) ; `C-x r m', `C-x p c m'
+(defun bookmark-set (&optional name parg interactivep no-update-p) ; `C-x r M', `C-x p c M'
   "Set a bookmark named NAME, then run `bmkp-after-set-hook'.
 If the region is active (`transient-mark-mode') and nonempty, then
 record the region limits in the bookmark.
@@ -2111,7 +2120,10 @@ A prefix argument changes the behavior as follows:
 
 Use `\\[bookmark-delete]' to remove bookmarks (you give it a name, and it removes
 only the first instance of a bookmark with that name from the list of
-bookmarks)."
+bookmarks).
+
+From Lisp code, non-nil optional arg NO-UPDATE-P means do not
+refresh/rebuild the bookmark-list display."
   (interactive (list nil current-prefix-arg t))
   (unwind-protect
        (progn
@@ -2133,7 +2145,7 @@ bookmarks)."
                 (bname    (or name  (bmkp-completing-read-lax
                                      "Set bookmark"
                                      (bmkp-new-bookmark-default-names defname)
-                                     (and (or (not parg) (consp parg)) ; No numeric PARG: all bookmarks.
+                                     (and (or (not parg)  (consp parg)) ; No numeric PARG: all bookmarks.
                                           (bmkp-specific-buffers-alist-only))
                                      nil 'bookmark-history))))
            ;; BNAME should not be "" now, since `bmkp-new-bookmark-default-names' should provide default(s)
@@ -2144,10 +2156,14 @@ bookmarks)."
              (setq bname  (bmkp-completing-read-lax
                            "Set bookmark"
                            (bmkp-new-bookmark-default-names defname)
-                           (and (or (not parg) (consp parg)) ; No numeric PARG: all bookmarks.
+                           (and (or (not parg)  (consp parg)) ; No numeric PARG: all bookmarks.
                                 (bmkp-specific-buffers-alist-only))
                            nil 'bookmark-history)))
-           (bookmark-store bname (cdr record) (consp parg) nil (not interactivep)) ; And refresh list. (?)
+           (when (and interactivep  bmkp-bookmark-set-confirms-overwrite-p  (atom parg)
+                      (bmkp-get-bookmark-in-alist bname 'NOERROR)
+                      (not (y-or-n-p (format "Overwrite bookmark `%s'? " bname))))
+             (error "OK, canceled"))
+           (bookmark-store bname (cdr record) (consp parg) no-update-p (not interactivep))
            (when (and interactivep  bmkp-prompt-for-tags-flag)
              (bmkp-add-tags bname (bmkp-read-tags-completing) 'NO-UPDATE-P)) ; Do not refresh tags. (?)
            (case (and (boundp 'bmkp-auto-light-when-set)  bmkp-auto-light-when-set)
@@ -3370,7 +3386,7 @@ Without a prefix arg, you are prompted for the new bookmark name and
  the new location name.  When entering the new names you can use
  completion against existing names.  This completion is lax, so you
  can easily edit an existing name.  See `bookmark-set' for particular
- keysavailable during this input.
+ keys available during this input.
 
 With a prefix arg, edit the complete bookmark record (the
  internal, Lisp form)."
@@ -3774,6 +3790,16 @@ This excludes the pseudo file name `bmkp-non-file-filename'."
         (add-to-list 'files file)))
     files))
 
+;;;###autoload (autoload 'bmkp-bookmark-set-confirm-overwrite "bookmark+")
+(defun bmkp-bookmark-set-confirm-overwrite (&optional name parg interactivep) ; Bound `C-x r m', `C-x p c m'.
+  "Set a bookmark named NAME, then run `bmkp-after-set-hook'.
+This is the same as `bookmark-set', except that with no prefix arg you
+are asked to confirm overwriting an existing bookmark of the same
+NAME."
+  (interactive (list nil current-prefix-arg t))
+  (let ((bmkp-bookmark-set-confirms-overwrite-p  t))
+    (call-interactively #'bookmark-set)))
+
 ;;;###autoload (autoload 'bmkp-send-bug-report "bookmark+")
 (defun bmkp-send-bug-report ()          ; Not bound
   "Send a bug report about a Bookmark+ problem."
@@ -3789,7 +3815,8 @@ Be sure to mention the `Update #' from header of the particular Bookmark+ file h
 (defun bmkp-toggle-bookmark-set-refreshes () ; Not bound
   "Toggle `bookmark-set' refreshing `bmkp-latest-bookmark-alist'.
 Add/remove `bmkp-refresh-latest-bookmark-list' to/from
-`bmkp-after-set-hook'."
+`bmkp-after-set-hook'.
+\(Applies also to command `bmkp-bookmark-set-confirm-overwrite'.)"
   (interactive)
   (if (member 'bmkp-refresh-latest-bookmark-list bmkp-after-set-hook)
       (remove-hook 'bmkp-after-set-hook 'bmkp-refresh-latest-bookmark-list)
@@ -3900,7 +3927,7 @@ Non-interactively, non-nil MSG-P means display a status message."
                          "Autosaving of current bookmark file is now OFF"))))
 
 ;;;###autoload (autoload 'bmkp-make-function-bookmark "bookmark+")
-(defun bmkp-make-function-bookmark (bookmark-name function &optional msg-p) ; Not bound
+(defun bmkp-make-function-bookmark (bookmark-name function &optional msg-p) ; Bound globally to `C-x p c F'.
   "Create a bookmark that invokes FUNCTION when \"jumped\" to.
 You are prompted for the bookmark name and the name of the function.
 But with a prefix arg the last keyboard macro defined is used instead
@@ -6678,55 +6705,73 @@ If TRUTH is nil, return nil."
 ;;  *** Indirect Bookmarking Functions ***
 
 ;;;###autoload (autoload 'bmkp-url-target-set "bookmark+")
-(defun bmkp-url-target-set (url &optional prefix-only-p name/prefix no-update-p msg-p) ; `C-x p c u'
+(defun bmkp-url-target-set (url &optional arg name/prefix no-overwrite-p no-update-p msg-p)
+                                        ; Bound globally to `C-x p c u'.
   "Set a bookmark for a URL.  Return the bookmark.
 Interactively you are prompted for the URL.  Completion is available.
 Use `M-n' to pick up the url at point as the default.
 
-You are also prompted for the bookmark name.  But with a prefix arg,
-you are prompted only for a bookmark-name prefix.  In that case, the
-bookmark name is the prefix followed by the URL.
+You are also prompted for the bookmark name.  But with a non-negative
+prefix arg, you are prompted only for a bookmark-name prefix.  In that
+case, the bookmark name is the prefix followed by the URL.
 
 When entering a bookmark name you can use completion against existing
 names.  This completion is lax, so you can easily edit an existing
 name.  See `bookmark-set' for particular keys available during this
 input.
 
+If you use a numeric prefix arg, such as `C-1', instead of plain
+`C-u', then a new bookmark is created if a bookmark of the same name
+already exists: an existing bookmark is not overwritten.  You can thus
+have multiple bookmarks with the same name, which target different
+URLs.
+
+Summary of prefix argument behavior:
+
+* None:        Provide full bookmark name. Overwrite existing bookmark
+* Plain `C-u': Provide name prefix only.   Overwrite existing bookmark
+* N >= 0:      Provide name prefix only.   Do not overwrite.
+* N < 0:       Provide full bookmark name. Do not overwrite.
+
 Non-interactively:
-* Non-nil PREFIX-ONLY-P means NAME/PREFIX is a bookmark-name prefix.
+* Numeric ARG >= 0 means NAME/PREFIX is a bookmark-name prefix.
 * NAME/PREFIX is the bookmark name or its prefix (the suffix = URL).
+* Non-nil NO-OVERWRITE-P means do not overwrite an existing bookmark.
 * Non-nil NO-UPDATE-P means do not refresh/rebuild the bookmark-list
   display.
 * Non-nil MSG-P means display a status message."
   (interactive
-   (list (if (require 'ffap nil t)
-             (ffap-read-file-or-url "URL: " (or (bmkp-thing-at-point 'url)
-                                                (and (fboundp 'url-get-url-at-point)
-                                                     (url-get-url-at-point))))
-           (let ((icicle-unpropertize-completion-result-flag  t))
-             (read-file-name "URL: " nil (or (bmkp-thing-at-point 'url)
-                                             (and (fboundp 'url-get-url-at-point)
-                                                  (url-get-url-at-point))))))
-         current-prefix-arg
-         (if current-prefix-arg
-             (read-string "Prefix for bookmark name: ")
-           (bmkp-completing-read-lax "Bookmark name"))
-         nil
-         'MSG))
+   (let* ((icicle-unpropertize-completion-result-flag  t)
+          (default-url                                 (or (bmkp-thing-at-point 'url)
+                                                           (and (fboundp 'url-get-url-at-point)
+                                                                (url-get-url-at-point))))
+          (parg                                        current-prefix-arg)
+          (prefix-only                                 (and parg  (natnump (prefix-numeric-value parg))))
+          (no-overw                                    (and parg  (atom current-prefix-arg))))
+     (list (if (require 'ffap nil t)
+               (ffap-read-file-or-url "URL: " default-url)
+             (read-file-name "URL: " nil default-url))
+           prefix-only
+           (if prefix-only
+               (read-string "Prefix for bookmark name: ")
+             (bmkp-completing-read-lax "Bookmark name"))
+           no-overw
+           nil
+           'MSG)))
   (unless name/prefix (setq name/prefix  ""))
   (let ((bookmark-make-record-function  (if (eq major-mode 'w3m-mode)
                                             'bmkp-make-w3m-record
                                           `(lambda () (bmkp-make-url-browse-record ',url))))
         bmk failure)
     (condition-case err
-        (setq bmk  (bookmark-store (if prefix-only-p (concat name/prefix url) name/prefix)
-                                   (cdr (bookmark-make-record))  nil  no-update-p  (not msg-p)))
+        (setq bmk  (bookmark-store (if arg (concat name/prefix url) name/prefix)
+                                   (cdr (bookmark-make-record))  no-overwrite-p  no-update-p  (not msg-p)))
       (error (setq failure  err)))
     (when failure (error "Failed to create bookmark for `%s':\n%s\n" url failure))
     bmk))                               ; Return the bookmark.
 
 ;;;###autoload (autoload 'bmkp-file-target-set "bookmark+")
-(defun bmkp-file-target-set (file &optional prefix-only-p name/prefix no-overwrite no-update-p msg-p)
+(defun bmkp-file-target-set (file &optional arg name/prefix no-overwrite no-update-p msg-p)
                                         ; Bound to `C-x p c f'
   "Set a bookmark for FILE.  Return the bookmark.
 The bookmarked position is the beginning of the file.
@@ -6734,45 +6779,59 @@ Interactively you are prompted for FILE.  Completion is available.
 You can use `M-n' to pick up the file name at point, or if none then
 the visited file.
 
-You are also prompted for the bookmark name.  But with a prefix arg,
-you are prompted only for a bookmark-name prefix.  In that case, the
-bookmark name is the prefix followed by the non-directory part of
-FILE.
+You are also prompted for the bookmark name.  But with a non-negative
+prefix arg, you are prompted only for a bookmark-name prefix.  In that
+case, the bookmark name is the prefix followed by the non-directory
+part of FILE.
 
 When entering a bookmark name you can use completion against existing
 names.  This completion is lax, so you can easily edit an existing
 name.  See `bookmark-set' for particular keys available during this
 input.
 
+If you use a numeric prefix arg, such as `C-1', instead of plain
+`C-u', then a new bookmark is created if a bookmark of the same name
+already exists: an existing bookmark is not overwritten.  You can thus
+have multiple bookmarks with the same name, which target different
+URLs.
+
+Summary of prefix argument behavior:
+
+* None:        Provide full bookmark name. Overwrite existing bookmark
+* Plain `C-u': Provide name prefix only.   Overwrite existing bookmark
+* N >= 0:      Provide name prefix only.   Do not overwrite.
+* N < 0:       Provide full bookmark name  Do not overwrite.
+
 Non-interactively:
- - Non-nil optional arg PREFIX-ONLY-P means prompt for a name prefix.
- - Optional arg NAME/PREFIX is the name or name prefix string.
- - Optional arg NO-OVERWRITE is passed to `bookmark-store': non-nil
-   means do not overwrite an existing bookmark that has the same name.
- - Non-nil NO-UPDATE-P means do not refresh/rebuild the bookmark-list
-   display.
- - Non-nil optional arg MSG-P means show a warning message if file
-   does not exist."
+* Numeric ARG >= 0 means NAME/PREFIX is a bookmark-name prefix.
+* NAME/PREFIX is the bookmark name or its prefix.
+* Non-nil NO-OVERWRITE-P means do not overwrite an existing bookmark.
+* Non-nil NO-UPDATE-P means do not refresh/rebuild the bookmark-list
+  display.
+* Non-nil MSG-P means show a warning message if file does not exist."
   (interactive
-   (list (let ((icicle-unpropertize-completion-result-flag  t))
-           (read-file-name "File: " nil
+   (let* ((icicle-unpropertize-completion-result-flag  t)
+          (parg                                        current-prefix-arg)
+          (prefix-only                                 (and parg  (natnump (prefix-numeric-value parg))))
+          (no-overw                                    (and parg  (atom current-prefix-arg))))
+     (list (read-file-name "File: " nil
                            (or (if (boundp 'file-name-at-point-functions) ; In `files.el', Emacs 23.2+.
                                    (run-hook-with-args-until-success 'file-name-at-point-functions)
                                  (ffap-guesser))
                                (bmkp-thing-at-point 'filename)
                                (buffer-file-name))))
-         current-prefix-arg
-         (if current-prefix-arg
-             (read-string "Prefix for bookmark name: ")
-           (bmkp-completing-read-lax "Bookmark name"))
-         nil
-         nil
-         'MSG))
+     prefix-only
+     (if prefix-only
+         (read-string "Prefix for bookmark name: ")
+       (bmkp-completing-read-lax "Bookmark name"))
+     no-overw
+     nil
+     'MSG))
   (unless name/prefix (setq name/prefix  ""))
   (let ((bookmark-make-record-function  (bmkp-make-record-for-target-file file))
-        bmk  failure)
+        bmk failure)
     (condition-case err
-        (setq bmk  (bookmark-store (if prefix-only-p
+        (setq bmk  (bookmark-store (if arg
                                        (concat name/prefix (file-name-nondirectory file))
                                      name/prefix)
                                    (cdr (bookmark-make-record))  no-overwrite  no-update-p  (not msg-p)))
@@ -7839,6 +7898,7 @@ Otherwise, load it to supplement the current bookmark list."
 ;; Inspired by emacs-devel@gnu.org post from Masatake Yamato [yamato@redhat.com], 2012-01-06.
 ;;;###autoload (autoload 'bmkp-set-snippet-bookmark "bookmark+")
 (defun bmkp-set-snippet-bookmark (beg end &optional promptp msgp)
+                                        ; Bound globally to `C-x p c M-w'.
   "Save the text of the active region as a bookmark.
 The bookmark is automatically named with the first line of the region
 text.  With a prefix argument you are prompted for the name instead.
@@ -7883,7 +7943,7 @@ The default value for the desktop-file location is the current value
 of DESKTOP-FILE.  As always, you can use `M-n' to retrieve it.
 
 With a prefix arg, set a bookmark to an existing DESKTOP-FILE - do not
-save the current desktop; that is, do not overwrite DESKTOP-FLIE.
+save the current desktop; that is, do not overwrite DESKTOP-FILE.
 
 If you also use library Icicles, then the desktop files of all
 existing desktop bookmarks are available during the desktop file-name
@@ -8081,6 +8141,7 @@ You need library `wide-n.el' to use the bookmark created."
 
 ;;;###autoload (autoload 'bmkp-wrap-bookmark-with-last-kbd-macro "bookmark+")
 (defun bmkp-wrap-bookmark-with-last-kbd-macro (sequence bookmark &optional arg msgp)
+                                        ; Bound globally to `C-x p C-k'.
   "Return a SEQUENCE bookmark that invokes BOOKMARK plus `last-kbd-macro'.
 If bookmark SEQUENCE does not yet exist, create it.  Else, update it.
 You are prompted for the SEQUENCE and BOOKMARK names.
@@ -8108,8 +8169,24 @@ sequence bookmark:
                                            (list bookmark kbd-macro-vec))
                                 arg msgp)))
 
+;; Not used yet.
+(defun bmkp-readable-marker (marker)
+  "Return a Lisp-readable representation of MARKER.
+The form returned is (marker MARKER-BUFFER MARKER-POSITION."
+  (let ((buf  (marker-buffer marker)))
+    (when buf (setq buf  (buffer-name buf)))
+    `(marker ,buf ,(marker-position marker))))
+
+;; Not used yet.
+(defun bmkp-pop-to-readable-marker (readable-marker)
+  "Go to the marker recorded as persistent READABLE-MARKER.
+The form of the input is (marker MARKER-BUFFER MARKER-POSITION."
+  (pop-to-buffer (cadr readable-marker))
+  (goto-char (cadr (cdr readable-marker))))
+
 ;;;###autoload (autoload 'bmkp-set-sequence-bookmark "bookmark+")
 (defun bmkp-set-sequence-bookmark (seqname bookmark-names &optional arg msgp)
+                                        ; Bound globally to `C-x p c s'.
   "Create or update a sequence bookmark named SEQNAME from BOOKMARK-NAMES.
 If a sequence bookmark named SEQNAME does not exist then create one.
 Else act on the existing bookmarks in bookmark SEQNAME as follows:
@@ -8611,6 +8688,52 @@ BOOKMARK is a bookmark name or a bookmark record."
       (save-excursion (dolist (dir  hidden-dirs) (when (dired-goto-subdir dir) (dired-hide-subdir 1)))))
     (goto-char (bookmark-get-position bookmark))))
 
+;;;###autoload (autoload 'bmkp-create-dired-bookmarks-recursive "bookmark+")
+(defun bmkp-create-dired-bookmarks-recursive (ignore-marks-p &optional msg-p)
+  "Bookmark this Dired buffer and marked subdirectory Dired buffers, recursively.
+Create a Dired bookmark for this directory and for each of its marked
+subdirectories.  Handle each of the marked subdirectory similarly:
+bookmark it and its marked subdirectories, and so on, recursively.
+Name each of these Dired bookmarks with the Dired buffer name.
+
+After creating the Dired bookmarks, create a sequence bookmark, named
+`DIRBUF and subdirs', where DIRBUF is the name of the original buffer.
+This bookmark represents the whole Dired tree rooted in the directory
+where you invoked the command.  Jumping to this sequence bookmark
+restores all of the Dired buffers making up the tree, by jumping to
+each of their bookmarks.
+
+With a prefix arg, bookmark the marked and unmarked subdirectory Dired
+buffers, recursively, that is, ignore markings.
+
+Note:
+
+* If there is more than one Dired buffer for a given subdirectory then
+  only the first such is used.
+
+* This command creates new bookmarks.  It never updates or overwrites
+  an existing bookmark."
+  (interactive "P\np")
+  (unless (featurep 'dired+) (error "You need library `dired+.el' for this command"))
+  (diredp-ensure-mode)
+  (let ((sdirs   (diredp-get-subdirs ignore-marks-p))
+        (snames  ()))
+    (when (and msg-p  sdirs) (message "Checking descendent directories..."))
+    (dolist (dir  (cons default-directory sdirs))
+      (when (dired-buffers-for-dir (expand-file-name dir)) ; Dirs with Dired buffers only.
+        (with-current-buffer (car (dired-buffers-for-dir (expand-file-name dir)))
+          (let ((bname  (bookmark-buffer-name))
+                (count  2))
+            (while (and (bmkp-get-bookmark-in-alist bname 'NOERROR)
+                        (setq bname  (format "%s[%d]" bname count))))
+            (bookmark-set bname nil nil 'NO-UPDATE-P) ; Inhibit updating displayed list.
+            (push bname snames)))))
+    (let ((bname  (format "%s and subdirs" (bookmark-buffer-name)))
+          (count  2))
+      (while (and (bmkp-get-bookmark-in-alist bname 'NOERROR)
+                  (setq bname  (format "%s[%d]" bname count))))
+      (bmkp-set-sequence-bookmark bname (nreverse snames) -1 'MSGP))
+    (bmkp-refresh/rebuild-menu-list nil)))
 
 (defun bmkp-read-bookmark-for-type (type alist &optional other-win pred hist action)
   "Read the name of a bookmark of type TYPE, with completion.
@@ -10373,7 +10496,7 @@ See `bmkp-next-bookmark-w32-repeat'."
 
 ;;;###autoload (autoload 'bmkp-toggle-autonamed-bookmark-set/delete "bookmark+")
 (defun bmkp-toggle-autonamed-bookmark-set/delete (&optional position allp)
-                                        ; Bound to `C-x p RET', `C-x p c RET'
+                                        ; Bound globally to `C-x p RET', `C-x p c RET'
   "If there is an autonamed bookmark at point, delete it, else create one.
 The bookmark created has no region.  Its name is formatted according
 to option `bmkp-autoname-bookmark-function'.

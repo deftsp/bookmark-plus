@@ -6,9 +6,9 @@
 ;; Maintainer: Drew Adams (concat "drew.adams" "@" "oracle" ".com")
 ;; Copyright (C) 2000-2014, Drew Adams, all rights reserved.
 ;; Created: Fri Sep 15 07:58:41 2000
-;; Last-Updated: Thu Dec 26 08:31:30 2013 (-0800)
+;; Last-Updated: Fri May 30 17:54:07 2014 (-0700)
 ;;           By: dradams
-;;     Update #: 15457
+;;     Update #: 15545
 ;; URL: http://www.emacswiki.org/bookmark+-chg.el
 ;; Doc URL: http://www.emacswiki.org/BookmarkPlus
 ;; Keywords: bookmarks, bookmark+
@@ -146,6 +146,33 @@
  
 ;;;(@* "CHANGE LOG FOR `bookmark+-1.el'")
 ;;
+;; 2014/05/30 dadams
+;;     bmkp-set-restrictions-bookmark: Updated for new restrictions format (wide-n.el).
+;; 2014/05/27 dadams
+;;     bmkp-describe-bookmark(-internals), bmkp-list-defuns-in-commands-file:
+;;       Use bmkp-with-help-window, not with-output-to-temp-buffer (Emacs 24.4+ silliness).
+;; 2014/04/05 dadams
+;;     Removed bmkp-create-dired-bookmarks-recursive: 
+;;      Moved to dired+.el and renamed diredp-do-bookmark-dirs-recursive.
+;; 2014/04/02 dadams
+;;     bmkp-paste-replace-tags: Added Note to doc string about pasting an empty list of tags.
+;; 2014/03/23 dadams
+;;     bmkp-file-target-set: Fix interactive spec (parens).
+;;     bmkp-file-target-set, bmkp-autofile-set, bmkp-autofile-(add|remove)-tags:
+;;       Soft-require ffap.el before using ffap-guesser.
+;; 2014/03/10 dadams
+;;     bookmark-write-file:
+;;       Remove prop face & Icicles props, anyway (but not bothering for sequence entry of seq bmks).
+;;     bookmark-write-file, bmkp-edit-tags, bmkp-save-menu-list-state, bmkp-readable-p:
+;;       Bind print-circle to bmkp-propertize-bookmark-names-flag, not t, to avoid string reuse.
+;; 2014/03/07 dadams
+;;     bookmark-exit-hook-internal: Do not raise error, since this is on kill-emacs-hook.
+;;     Bug reported: http://superuser.com/q/726057/250462.
+;; 2014/01/02 dadams
+;;     Reverted yesterday's change.  Just use cond instead of case.
+;; 2014/01/01 dadams
+;;     Added bmkp-file-cache-ad-hack, as workaround for macro case not getting byte-compiled.
+;;     file-cache-add-file: Use bmkp-file-cache-ad-hack.  Thx to Michael Heerdegen.
 ;; 2013/11/21 dadams
 ;;    bmkp-url-target-set: Added argument NO-OVERWRITE-P.
 ;;    bmkp-(url|file)-target-set: Numeric prefix arg means do not overwrite.  N<0 means use full name.
@@ -966,6 +993,39 @@
  
 ;;;(@* "CHANGE LOG FOR `bookmark+-bmu.el'")
 ;;
+;; 2014/05/27 dadams
+;;     bmkp-bmenu-mode-status-help, bmkp-bmenu-describe-marked:
+;;       Use bmkp-with-help-window, not with-output-to-temp-buffer (Emacs 24.4+ silliness).
+;; 2014/04/02 dadams
+;;     bmkp-bmenu-copy-tags, bmkp-bmenu-paste-replace-tags(for-marked):
+;;       Added Note to doc string about pasting an empty list of tags.
+;;     bmkp-bmenu-tags-menu: Added item Copy Tags from This Bookmark for bmkp-bmenu-copy-tags.
+;;     bmkp-bmenu-mouse-3-menu: Added :active bmkp-copied-tags for bmkp-bmenu-paste-add-tags.
+;; 2014/04/01 dadams
+;;     Added: bmkp-bmenu-list-tags-of-marked.
+;;       Bind it to T > l in bookmark-bmenu-mode-map.
+;;       Add it to bmkp-bmenu-tags-menu.
+;;     bookmark-bmenu-mode: List bmkp-bmenu-list-tags-of-marked in doc string.
+;; 2014/03/29 dadams
+;;     Added variable bmkp-bmenu-define-command-history.
+;;     bmkp-bmenu-define(-jump-marked|-full-snapshot)-command:
+;;       Removed quote before bmkp-bmenu-define-command-history.
+;;     Toggle submenu: Use bmkp-menu-bar-make-toggle.
+;; 2014/03/28 dadams
+;;     bmkp-bmenu-describe-marked: Apply bmkp-sort-omit, to show bookmarks in the current sort order.
+;; 2014/03/23 dadams
+;;     Added: bmkp-bmenu-delete-menu, bmkp-bmenu-mark-types-menu, bmkp-bmenu-search-menu,
+;;            bmkp-bmenu-show-types-menu, bmkp-bmenu-toggle-menu.  Move menu items there from top.
+;;     bookmark-bmenu-mode-map:
+;;       Bind jump commands to j prefix and J prefix (like C-x 4 j and C-x j).
+;;       Bind bookmark-bmenu-locate to C-S-l, since w is used as a prefix key now.
+;;     bookmark-bmenu-mode: New jump bindings.  Added bmkp-bmenu-copy-tags.
+;; 2014/03/21 dadams
+;;     bookmark-bmenu-mode: List also global bindings for tag commands.
+;; 2014/03/10 dadams
+;;     bmkp-maybe-unpropertize-bookmark-names: Remove prop face & Icicles props, in any case.
+;;     bmkp-bmenu-define(-jump-marked|-full-snapshot)-command, bmkp-define-tags-sort-command:
+;;       Bind print-circle to bmkp-propertize-bookmark-names-flag, not t, to avoid string reuse.
 ;; 2013/12/13 dadams
 ;;     bmkp-bmenu-mode-line:
 ;;       To avoid Emacs crashes from bug #12867: Do not define it for Emacs 22-23, and wrap
@@ -1385,6 +1445,9 @@
  
 ;;;(@* "CHANGE LOG FOR `bookmark+-key.el'")
 ;;
+;; 2014/03/23 dadams
+;;     Bind j and J in bookmark-bmenu-mode-map.  Bind also j > there.
+;;     Add bmkp-bmenu-jump-to-marked to bmkp-jump-menu when in bookmark-list display.
 ;; 2013/10/29 dadams
 ;;     Bind bookmark-set's previous keys to bmkp-bookmark-set-confirm-overwrite.
 ;;     Bind bookmark-set to C-x r M, not C-x r m.
@@ -1548,6 +1611,8 @@
 ;;       that depends on macros needs to be byte-compiled anew after loading the updated macros.
 ;; **************************************************************************************************
 ;;
+;; 2014/05/27 dadams
+;;     Added: bmkp-with-help-window.
 ;; 2013/04/26 dadams
 ;;     Added: bmkp-with-bookmark-dir.  (Not used currently.  For user code.)
 ;; 2012/10/09 dadams

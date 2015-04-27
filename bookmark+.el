@@ -4,24 +4,23 @@
 ;; Description: Bookmark+: extensions to standard library `bookmark.el'.
 ;; Author: Drew Adams, Thierry Volpiatto
 ;; Maintainer: Drew Adams (concat "drew.adams" "@" "oracle" ".com")
-;; Copyright (C) 2000-2014, Drew Adams, all rights reserved.
+;; Copyright (C) 2000-2015, Drew Adams, all rights reserved.
 ;; Copyright (C) 2009, Thierry Volpiatto, all rights reserved.
 ;; Created: Fri Sep 15 07:58:41 2000
-;; Version: 2013.07.23
-;; Last-Updated: Thu Dec 26 08:33:06 2013 (-0800)
+;; Version: 2015.04.03
+;; Last-Updated: Fri Apr  3 09:43:49 2015 (-0700)
 ;;           By: dradams
-;;     Update #: 15018
+;;     Update #: 15031
 ;; URL: http://www.emacswiki.org/bookmark+.el
 ;; Doc URL: http://www.emacswiki.org/BookmarkPlus
-;; Keywords: bookmarks, bookmark+, placeholders, annotations, search, info, url, w3m, gnus
-;; Compatibility: GNU Emacs: 20.x, 21.x, 22.x, 23.x, 24.x
+;; Keywords: bookmarks, bookmark+, projects, placeholders, annotations, search, info, url, w3m, gnus
+;; Compatibility: GNU Emacs: 20.x, 21.x, 22.x, 23.x, 24.x, 25.x
 ;;
 ;; Features that might be required by this library:
 ;;
 ;;   `apropos', `apropos+', `avoid', `bookmark', `bookmark+-1',
-;;   `bookmark+-bmu', `bookmark+-key', `bookmark+-lit', `cl',
-;;   `cmds-menu', `dired', `dired-aux', `dired-x', `ffap',
-;;   `fit-frame', `frame-fns', `help+20', `info', `info+',
+;;   `bookmark+-bmu', `bookmark+-key', `bookmark+-lit', `cmds-menu',
+;;   `ffap', `fit-frame', `frame-fns', `help+20', `info', `info+20',
 ;;   `menu-bar', `menu-bar+', `misc-cmds', `misc-fns', `naked', `pp',
 ;;   `pp+', `second-sel', `strings', `thingatpt', `thingatpt+',
 ;;   `unaccent', `w32browser-dlgopen', `wid-edit', `wid-edit+',
@@ -55,7 +54,7 @@
 ;;       Web'.
 ;;
 ;;    2. From the Emacs-Wiki Web site:
-;;       http://www.emacswiki.org/cgi-bin/wiki/BookmarkPlus.
+;;       http://www.emacswiki.org/BookmarkPlus.
 ;;
 ;;    3. From the Bookmark+ group customization buffer:
 ;;       `M-x customize-group bookmark-plus', then click link
@@ -63,6 +62,10 @@
 ;;
 ;;    (The commentary links in #1 and #3 work only if you have library
 ;;    `bookmark+-doc.el' in your `load-path'.)
+;;
+;;    To report Bookmark+ bugs: `M-x customize-group bookmark-plus'
+;;    and then follow (e.g. click) the link `Send Bug Report', which
+;;    helps you prepare an email to me.
 ;;
 ;;
 ;;    ****** NOTE ******
@@ -101,7 +104,7 @@
 ;;         Bookmark+ features.
 ;;
 ;;      2. In your default bookmark file, `bookmark-default-file'
-;;         (`.emacs.bmk'), and in any other bookmark files you might
+;;         (`~/.emacs.bmk'), and in any other bookmark files you might
 ;;         have.
 ;;
 ;;      3. In your `*Bookmark List*' state file,

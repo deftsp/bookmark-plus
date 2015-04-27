@@ -4,15 +4,15 @@
 ;; Description: Bookmark highlighting for Bookmark+.
 ;; Author: Drew Adams
 ;; Maintainer: Drew Adams
-;; Copyright (C) 2010-2014, Drew Adams, all rights reserved.
+;; Copyright (C) 2010-2015, Drew Adams, all rights reserved.
 ;; Created: Wed Jun 23 07:49:32 2010 (-0700)
-;; Last-Updated: Thu Dec 26 08:32:13 2013 (-0800)
+;; Last-Updated: Thu Apr  2 14:48:56 2015 (-0700)
 ;;           By: dradams
-;;     Update #: 862
+;;     Update #: 904
 ;; URL: http://www.emacswiki.org/bookmark+-lit.el
 ;; Doc URL: http://www.emacswiki.org/BookmarkPlus
 ;; Keywords: bookmarks, highlighting, bookmark+
-;; Compatibility: GNU Emacs: 20.x, 21.x, 22.x, 23.x, 24.x
+;; Compatibility: GNU Emacs: 20.x, 21.x, 22.x, 23.x, 24.x, 25.x
 ;;
 ;; Features that might be required by this library:
 ;;
@@ -50,7 +50,7 @@
 ;;       Web'.
 ;;
 ;;    2. From the Emacs-Wiki Web site:
-;;       http://www.emacswiki.org/cgi-bin/wiki/BookmarkPlus.
+;;       http://www.emacswiki.org/BookmarkPlus.
 ;;
 ;;    3. From the Bookmark+ group customization buffer:
 ;;       `M-x customize-group bookmark-plus', then click link
@@ -90,7 +90,7 @@
 ;;
 ;;    `bmkp-bmenu-light', `bmkp-bmenu-light-marked',
 ;;    `bmkp-bmenu-set-lighting', `bmkp-bmenu-set-lighting-for-marked',
-;;    `bmkp-bmenu-show-only-lighted', `bmkp-bmenu-unlight',
+;;    `bmkp-bmenu-show-only-lighted-bookmarks', `bmkp-bmenu-unlight',
 ;;    `bmkp-bmenu-unlight-marked', `bmkp-bookmarks-lighted-at-point',
 ;;    `bmkp-cycle-lighted-this-buffer',
 ;;    `bmkp-cycle-lighted-this-buffer-other-window',
@@ -108,6 +108,8 @@
 ;;    `bmkp-set-lighting-for-bookmark',
 ;;    `bmkp-set-lighting-for-buffer',
 ;;    `bmkp-set-lighting-for-this-buffer',
+;;    `bmkp-toggle-auto-light-when-jump',
+;;    `bmkp-toggle-auto-light-when-set',
 ;;    `bmkp-unlight-autonamed-this-buffer', `bmkp-unlight-bookmark',
 ;;    `bmkp-unlight-bookmark-here',
 ;;    `bmkp-unlight-bookmark-this-buffer', `bmkp-unlight-bookmarks',
@@ -150,7 +152,8 @@
 ;;
 ;;  Internal variables defined here:
 ;;
-;;    `bmkp-autonamed-overlays', `bmkp-light-styles-alist',
+;;    `bmkp-autonamed-overlays', `bmkp-last-auto-light-when-jump',
+;;    `bmkp-last-auto-light-when-set', `bmkp-light-styles-alist',
 ;;    `bmkp-non-autonamed-overlays'.
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -176,14 +179,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-(eval-when-compile (require 'cl)) ;; case
+(eval-when-compile (require 'cl)) ;; case (plus, for Emacs 20: push)
 
 (require 'bookmark)
-;; bookmark-alist, bookmark-bmenu-bookmark, bookmark-completing-read,
-;; bookmark-get-bookmark, bookmark-get-position,
-;; bookmark-handle-bookmark, bookmark-maybe-load-default-file,
-;; bookmark-name-from-full-record, bookmark-name-from-record, bookmark-prop-get,
-;; bookmark-prop-set
+;; bookmark-alist, bookmark-bmenu-bookmark, bookmark-completing-read, bookmark-get-bookmark,
+;; bookmark-get-position, bookmark-handle-bookmark, bookmark-maybe-load-default-file,
+;; bookmark-name-from-full-record, bookmark-name-from-record, bookmark-prop-get, bookmark-prop-set
 
 
 ;; Some general Renamings.
@@ -200,6 +201,14 @@
 ;;
 (defalias 'bmkp-bookmark-data-from-record 'bookmark-get-bookmark-record)
 (defalias 'bmkp-bookmark-name-from-record 'bookmark-name-from-full-record)
+
+
+(eval-when-compile
+ (or (condition-case nil
+         (load-library "bookmark+-mac") ; Use load-library to ensure latest .elc.
+       (error nil))
+     (require 'bookmark+-mac)))         ; Require, so can load separately if not on `load-path'.
+;; bmkp-define-show-only-command
 
 
 ;; (eval-when-compile (require 'bookmark+-bmu))
@@ -295,6 +304,11 @@ will be the buffer before jumping."
           (const :tag "None (no automatic highlighting)"   nil))
   :group 'bookmark-plus)
 
+;; The value is not correct if user customizes `bmkp-auto-light-when-jump' to non-nil.
+;; So must compensate in `bmkp-toggle-auto-light-when-jump'.
+(defvar bmkp-last-auto-light-when-jump (and (not bmkp-auto-light-when-jump)  'all-in-buffer)
+  "Last value of `bmkp-auto-light-when-jump'.")
+
 ;;;###autoload (autoload 'bmkp-auto-light-when-set "bookmark+")
 (defcustom bmkp-auto-light-when-set nil
   "*Which bookmarks to automatically highlight when set."
@@ -307,6 +321,11 @@ will be the buffer before jumping."
           (const :tag "All bookmarks in buffer"            all-in-buffer)
           (const :tag "None (no automatic highlighting)"   nil))
   :group 'bookmark-plus)
+
+;; The value is not correct if user customizes `bmkp-auto-light-when-set' to non-nil.
+;; So must compensate in `bmkp-toggle-auto-light-when-set'.
+(defvar bmkp-last-auto-light-when-set (and (not bmkp-auto-light-when-set)  'all-in-buffer)
+  "Last value of `bmkp-auto-light-when-set'.")
 
 ;;;###autoload (autoload 'bmkp-light-priorities "bookmark+")
 (defcustom bmkp-light-priorities '((bmkp-autonamed-overlays        . 160)
@@ -383,18 +402,9 @@ This option is not used for Emacs versions before Emacs 22."
 ;;(@* "Menu-List (`*-bmenu-*') Commands")
 ;;  *** Menu-List (`*-bmenu-*') Commands ***
 
-;;;###autoload (autoload 'bmkp-bmenu-show-only-lighted "bookmark+")
-(defun bmkp-bmenu-show-only-lighted () ; `H S' in bookmark list
-  "Display a list of highlighted bookmarks (only)."
-  (interactive)
-  (bmkp-bmenu-barf-if-not-in-menu-list)
-  (setq bmkp-bmenu-filter-function  'bmkp-lighted-alist-only
-        bmkp-bmenu-title            "Highlighted Bookmarks")
-  (let ((bookmark-alist  (funcall bmkp-bmenu-filter-function)))
-    (setq bmkp-latest-bookmark-alist  bookmark-alist)
-    (bookmark-bmenu-list 'filteredp))
-  (when (interactive-p)
-    (bmkp-msg-about-sort-order (bmkp-current-sort-order) "Only highlighted bookmarks are shown")))
+;;;###autoload (autoload 'bmkp-bmenu-show-only-lighted-bookmarks "bookmark+")
+(bmkp-define-show-only-command lighted "Display (only) the highlighted bookmarks." ; `H S' in bookmark list
+                               bmkp-lighted-alist-only)
 
 ;;;###autoload (autoload 'bmkp-bmenu-light "bookmark+")
 (defun bmkp-bmenu-light ()              ; `H H' in bookmark list
@@ -460,12 +470,11 @@ You are prompted for the highlight style, face, and condition (when)."
         (curr-bmk  (bookmark-bmenu-bookmark)))
     (unless marked (error "No marked bookmarks"))
     (dolist (bmk  marked)
-      (if (or face  style  when)
-          (bookmark-prop-set bmk 'lighting
-                             `(,@(and face   (not (eq face 'auto))   `(:face ,face))
-                               ,@(and style  (not (eq style 'none))  `(:style ,style))
-                               ,@(and when   (not (eq when 'auto))   `(:when ,when))))
-        (bookmark-prop-set bmk 'lighting nil)))
+      (bookmark-prop-set bmk 'lighting (if (or face  style  when)
+                                           `(,@(and face   (not (eq face 'auto))   `(:face ,face))
+                                             ,@(and style  (not (eq style 'none))  `(:style ,style))
+                                             ,@(and when   (not (eq when 'auto))   `(:when ,when)))
+                                         ())))
     (when (get-buffer-create "*Bookmark List*") (bmkp-refresh-menu-list curr-bmk)))
   (when msgp (message "Setting highlighting...done")))
 
@@ -498,8 +507,24 @@ Non-interactively:
       (when msgp (pp-eval-expression 'bmks)))
     bmks))
 
+;;;###autoload (autoload 'bmkp-toggle-auto-light-when-jump "bookmark+")
+(defun bmkp-toggle-auto-light-when-jump (&optional msgp) ; Not bound.
+  "Toggle automatic bookmark highlighting when a bookmark is jumped to.
+Set option `bmkp-auto-light-when-jump' to nil if non-nil, and to its
+last non-nil value if nil."
+  (interactive "p")
+  (when (and bmkp-auto-light-when-jump  bmkp-last-auto-light-when-jump) ; Compensate for wrong default
+    (setq bmkp-last-auto-light-when-jump  nil))
+  (setq bmkp-last-auto-light-when-jump
+        (prog1 bmkp-auto-light-when-jump ; Swap
+          (setq bmkp-auto-light-when-jump  bmkp-last-auto-light-when-jump)))
+  (when msgp (message "Automatic highlighting of bookmarks when jumping is now %s"
+                      (if bmkp-auto-light-when-jump
+                          (upcase (symbol-value bmkp-auto-light-when-jump))
+                        "OFF"))))
+                                        
 ;;;###autoload (autoload 'bmkp-lighted-jump "bookmark+")
-(defun bmkp-lighted-jump (bookmark-name &optional use-region-p) ; `C-x j h'
+(defun bmkp-lighted-jump (bookmark-name &optional flip-use-region-p) ; `C-x j h'
   "Jump to a highlighted bookmark.
 This is a specialization of `bookmark-jump' - see that, in particular
 for info about using a prefix argument."
@@ -507,10 +532,10 @@ for info about using a prefix argument."
    (let ((alist  (bmkp-lighted-alist-only)))
      (unless alist  (error "No highlighted bookmarks"))
      (list (bookmark-completing-read "Jump to highlighted bookmark" nil alist) current-prefix-arg)))
-  (bmkp-jump-1 bookmark-name 'switch-to-buffer use-region-p))
+  (bmkp-jump-1 bookmark-name 'switch-to-buffer flip-use-region-p))
 
 ;;;###autoload (autoload 'bmkp-lighted-jump-other-window "bookmark+")
-(defun bmkp-lighted-jump-other-window (bookmark-name &optional use-region-p) ; `C-x 4 j h'
+(defun bmkp-lighted-jump-other-window (bookmark-name &optional flip-use-region-p) ; `C-x 4 j h'
   "Jump to a highlighted bookmark in another window.
 See `bmkp-lighted-jump'."
   (interactive
@@ -518,7 +543,7 @@ See `bmkp-lighted-jump'."
      (unless alist  (error "No highlighted bookmarks"))
      (list (bookmark-completing-read "Jump to highlighted bookmark in another window" nil alist)
            current-prefix-arg)))
-  (bmkp-jump-1 bookmark-name 'bmkp-select-buffer-other-window use-region-p))
+  (bmkp-jump-1 bookmark-name 'bmkp-select-buffer-other-window flip-use-region-p))
 
 ;;;###autoload (autoload 'bmkp-unlight-bookmark "bookmark+")
 (defun bmkp-unlight-bookmark (bookmark &optional noerrorp msgp)
@@ -623,6 +648,21 @@ Prefix arg, unhighlight them everywhere."
   (interactive)
   (bmkp-unlight-bookmarks))
 
+;;;###autoload (autoload 'bmkp-toggle-auto-light-when-set "bookmark+")
+(defun bmkp-toggle-auto-light-when-set (&optional msgp) ; Not bound.
+  "Toggle automatic bookmark highlighting when a bookmark is set.
+Set option `bmkp-auto-light-when-set' to nil if non-nil, and to its
+last non-nil value if nil."
+  (interactive "p")
+  (when (and bmkp-auto-light-when-set  bmkp-last-auto-light-when-set) ; Compensate for wrong default
+    (setq bmkp-last-auto-light-when-set  nil))
+  (setq bmkp-last-auto-light-when-set  (prog1 bmkp-auto-light-when-set ; Swap
+                                         (setq bmkp-auto-light-when-set  bmkp-last-auto-light-when-set)))
+  (when msgp (message "Automatic highlighting of bookmarks when setting is now %s"
+                      (if bmkp-auto-light-when-set
+                          (upcase (symbol-value bmkp-auto-light-when-set))
+                        "OFF"))))
+                                        
 ;;;###autoload (autoload 'bmkp-set-lighting-for-bookmark "bookmark+")
 (defun bmkp-set-lighting-for-bookmark (bookmark-name style face when &optional msgp light-now-p)
   "Set the `lighting' property for bookmark BOOKMARK-NAME.
@@ -647,12 +687,11 @@ Non-nil LIGHT-NOW-P means apply the highlighting now."
               (and bmk-when   (format "%S" bmk-when)))
              (list 'MSGP (not current-prefix-arg)))))
   (when msgp (message "Setting highlighting..."))
-  (if (or face  style  when)
-      (bookmark-prop-set bookmark-name
-                         'lighting `(,@(and face   (not (eq face 'auto))   `(:face ,face))
-                                     ,@(and style  (not (eq style 'none))  `(:style ,style))
-                                     ,@(and when   (not (eq when 'auto))   `(:when ,when))))
-    (bookmark-prop-set bookmark-name 'lighting nil))
+  (bookmark-prop-set bookmark-name 'lighting (if (or face  style  when)
+                                                 `(,@(and face   (not (eq face 'auto))   `(:face ,face))
+                                                   ,@(and style  (not (eq style 'none))  `(:style ,style))
+                                                   ,@(and when   (not (eq when 'auto))   `(:when ,when)))
+                                               ()))
   (when (get-buffer-create "*Bookmark List*") (bmkp-refresh-menu-list bookmark-name))
   (when msgp (message "Setting highlighting...done"))
   (when light-now-p (bmkp-light-bookmark bookmark-name nil nil msgp))) ; This msg is more informative.

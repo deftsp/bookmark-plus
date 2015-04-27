@@ -4,16 +4,16 @@
 ;; Description: Documentation for package Bookmark+
 ;; Author: Drew Adams
 ;; Maintainer: Drew Adams (concat "drew.adams" "@" "oracle" ".com")
-;; Copyright (C) 2000-2014, Drew Adams, all rights reserved.
+;; Copyright (C) 2000-2015, Drew Adams, all rights reserved.
 ;; Created: Fri Sep 15 07:58:41 2000
-;; Last-Updated: Fri Apr 18 14:10:36 2014 (-0700)
+;; Last-Updated: Fri Mar 20 19:39:17 2015 (-0700)
 ;;           By: dradams
-;;     Update #: 14764
+;;     Update #: 15038
 ;; URL: http://www.emacswiki.org/bookmark+-doc.el
 ;; Doc URL: http://www.emacswiki.org/BookmarkPlus
 ;; Keywords: bookmarks, bookmark+, placeholders, annotations, search,
 ;;           info, url, w3m, gnus
-;; Compatibility: GNU Emacs: 20.x, 21.x, 22.x, 23.x, 24.x
+;; Compatibility: GNU Emacs: 20.x, 21.x, 22.x, 23.x, 24.x, 25.x
 ;;
 ;; Features that might be required by this library:
 ;;
@@ -47,7 +47,7 @@
 ;;       Web'.
 ;;
 ;;    2. From the Emacs-Wiki Web site:
-;;       http://www.emacswiki.org/cgi-bin/wiki/BookmarkPlus.
+;;       http://www.emacswiki.org/BookmarkPlus.
 ;;    
 ;;    3. From the Bookmark+ group customization buffer:
 ;;       `M-x customize-group bookmark-plus', then click link
@@ -56,7 +56,11 @@
 ;;    (The commentary links in #1 and #3 work only if put you this
 ;;    library, `bookmark+-doc.el', in your `load-path'.)
 ;;
-;;    More description below.
+;;    More Bookmark+ description below.
+;;
+;;    To report Bookmark+ bugs: `M-x customize-group bookmark-plus'
+;;    and then follow (e.g. click) the link `Send Bug Report', which
+;;    helps you prepare an email to me.
 ;;
 ;;
 ;;    ****** NOTE ******
@@ -76,7 +80,7 @@
 ;;         Bookmark+ features.
 ;;
 ;;      2. In your default bookmark file, `bookmark-default-file'
-;;         (`.emacs.bmk'), and in any other bookmark files you might
+;;         (`~/.emacs.bmk'), and in any other bookmark files you might
 ;;         have.
 ;;
 ;;      3. In your `*Bookmark List*' state file,
@@ -101,7 +105,6 @@
 ;;      `bmkp-toggle-saving-menu-list-state' - they are also in the
 ;;      `Bookmark+' menu).
 ;;
-;;
 ;;      Again, sorry for this inconvenience.
  
 ;;(@> "Index")
@@ -118,9 +121,11 @@
 ;;
 ;;  (@> "Documentation")
 ;;    (@> "Installing Bookmark+")
+;;      (@> "Bookmark+ Load Order and Option `bookmark-default-file'")
 ;;    (@> "Bookmark+ Features")
 ;;    (@> "Bookmark Basics")
 ;;    (@> "Different Types of Jump Commands")
+;;    (@> "Bookmark Annotations")
 ;;    (@> "Bookmark Tags")
 ;;    (@> "Bookmark Tags Can Have Values")
 ;;    (@> "Function, Sequence, and Variable-List Bookmarks")
@@ -166,6 +171,8 @@
 ;;      (@> "Highlighting On Demand")
 ;;      (@> "Highlighting Automatically")
 ;;    (@> "Using Highlighted Bookmarks")
+;;    (@> "Bookmark Links")
+;;      (@> "Org Mode Links that Jump To Bookmarks")
 ;;    (@> "Use Bookmark+ with Icicles")
 ;;    (@> "Bookmark Compatibility with Vanilla Emacs (`bookmark.el')")
 ;;    (@> "New Bookmark Structure")
@@ -206,6 +213,39 @@
 ;;  vanilla Emacs.  The others are available from the Emacs Wiki web
 ;;  site: http://www.emacswiki.org/.  You also need Emacs 22 or later
 ;;  for this feature.
+;;
+;;
+;;(@* "Bookmark+ Load Order and Option `bookmark-default-file'")
+;;  *** Bookmark+ Load Order and Option `bookmark-default-file' ***
+;;
+;;  Standard option `bookmark-default-file' defines the default
+;;  location of your bookmark file.  Bookmark+ does not change the
+;;  value.  You can change the value, of course, either by customizing
+;;  it (recommended) or using Lisp code (including in your init file).
+;;
+;;  However, the value of `bookmark-default-file' is used when you
+;;  load Bookmark+ to initialize some other variables, in particular
+;;  option `bmkp-last-as-first-bookmark-file' and internal variable
+;;  `bmkp-current-bookmark-file'.
+;;
+;;  This means that if you modify `bookmark-default-file' in your init
+;;  file, and you want your new value to be take into account by
+;;  Bookmark+, then modify it before you load Bookmark+.
+;;
+;;  Be aware also that another library that you load might, itself,
+;;  load Bookmark+, in which case you will for the same reason want to
+;;  load that library after you have modified `bookmark-default-file'.
+;;  An example of this is Icicles, which loads Bookmark+ if Bookmark+
+;;  is in your `load-path'.
+;;
+;;  In general, with Bookmark+ I recommend that you simply set option
+;;  `bookmark-default-file' once and for all at the outset, preferably
+;;  by customizing it.  You can use `bmkp-switch-bookmark-file-create'
+;;  at any time to switch to a different bookmark file - it is bound
+;;  to `C-x p L'.  You can also invoke it in your init file, provided
+;;  Bookmark+ has already been loaded.
+;;
+;;  See Also: (@> "Using Multiple Bookmark Files")
  
 ;;(@* "Bookmark+ Features")
 ;;  ** Bookmark+ Features **
@@ -214,6 +254,20 @@
 ;;  provides.  Some of these are detailed in other sections, below.
 ;;
 ;;  * Richer bookmarks.  They record more.  They are more accurate.
+;;
+;;     - An optional bookmark annotation is user-supplied text that is
+;;       saved as part of the bookmark.  You can use any text you
+;;       like, and you can use it for any purpose you like.  In
+;;       Bookmark+, the mode for viewing and editing a bookmark
+;;       annotation is Org mode, by default.
+;;
+;;     - In addition, Bookmark+ lets you optionally use a separate
+;;       file, URL, or bookmark to annotate any bookmark.  Accessing
+;;       ("showing") such an external annotation visits its
+;;       destination.  So for example, you can use bookmarks to one or
+;;       more Org files to annotate one or more bookmarks.  The
+;;       annotation saved with the bookmark itself just specifies the
+;;       destination.  See (@> "Bookmark Annotations").
 ;;
 ;;     - You can tag bookmarks, a la del.icio.us.  In effect, tags
 ;;       define bookmark sets.  A bookmark can have any number of
@@ -252,6 +306,15 @@
 ;;       activated (see option `bmkp-use-region').  (Region activation
 ;;       is not supported for Gnus bookmarks.)
 ;;
+;;       You can define your own region handler for bookmarks that
+;;       record regions.  (This is in addition to being able to define
+;;       bookmark handlers.)  Use option `bmkp-handle-region-function'
+;;       for this.  As one example, command
+;;       `bmkp-region-jump-narrow-indirect-other-window' binds the
+;;       option to a function that narrows the targeted region in a
+;;       cloned indirect buffer.  (You need library
+;;       `narrow-indirect.el' for this command.)
+;;
 ;;     - Bookmarks are relocated better than for vanilla Emacs when
 ;;       the contextual text changes.
 ;;
@@ -283,13 +346,21 @@
 ;;
 ;;     - Desktop bookmarks.  You can bookmark the current Emacs
 ;;       desktop, as defined by library `desktop.el' - use command
-;;       `bmkp-set-desktop-bookmark' (`C-x p K').  You can "jump" to
-;;       (that is, restore) a saved desktop.  A desktop includes:
+;;       `bmkp-set-desktop-bookmark' (`C-x p K').  You can "jump" to a
+;;       desktop bookmark (that is, restore its saved desktop).  A
+;;       desktop includes:
 ;;
 ;;         - Some global variables.  To exclude variables normally
 ;;           saved, see option `bmkp-desktop-no-save-vars'.
 ;; 	   - The current set of buffers and their associated files.
 ;;           For each: its mode, point, mark, & some local variables.
+;;
+;;       If option `bmkp-desktop-jump-save-before-flag' is non-`nil',
+;;       and if the current desktop was made current by jumping to a
+;;       bookmark, then it is saved before jumping to the next
+;;       desktop.  If you want to save the last desktop jumped to when
+;;       you quit Emacs, then add `bmkp-desktop-save-as-last' to
+;;       `kill-emacs-hook'.
 ;;
 ;;     - Gnus bookmarks.  You can bookmark a Gnus article, a URL, a
 ;;       PDF file (DocView), a UNIX manual page (from the output of
@@ -311,6 +382,17 @@
 ;;     - Snippet bookmarks.  Select some some text and give it a
 ;;       (bookmark) name.  Then copy it to the `kill-ring' anytime, in
 ;;       any Emacs session.
+;;
+;;     - Icicles search-hits bookmarks.  (You need library Icicles to
+;;       use this feature.)  During Icicles search you can use `C-x
+;;       C-M->' to save the current set of completion candidates
+;;       (search hits matching your current input) as an Icicles
+;;       search-hits bookmark.  During a later Icicles search you can
+;;       retrieve those search hits saved in the bookmark, by using
+;;       `C-x C-M-<`.  You can add to (instead of replacing) the
+;;       current set of hits with hits retrieved from a bookmark using
+;;       `C-x C-<'.  This is the only way you can "jump" to such a
+;;       bookmark.
 ;;
 ;;     In particular, note that you can use the following kinds of
 ;;     bookmarks to quickly switch among different projects (sets of
@@ -482,6 +564,12 @@
 ;;         but for all of the marked bookmarks, in the current sort
 ;;         order.  That is, it describes each of the marked bookmarks.
 ;;
+;;         `C-down' and `C-up' move the cursor down and up a line,
+;;         respectively, but they also show the description of the
+;;         bookmark corresponding to the new cursor location.  This is
+;;         a quick way to cycle among bookmark descriptions, in the
+;;         current sort order.
+;;
 ;;     - General Bookmark+ documentation.
 ;;
 ;;       . Anywhere in Emacs, `M-x bmkp-bmenu-mode-status-help' shows
@@ -489,7 +577,7 @@
 ;;         bookmark list.  Click button `Doc in Commentary' or button
 ;;         `Doc on the Web' to access the complete documentation.
 ;;
-;;         (Use button `Customize' to customize all `Bookmark+'
+;;         (Use button `Customize' to customize all Bookmark+
 ;;         faces and options.)
 ;;
 ;;       . In the bookmark list, `?' and `C-h m' are the same as `M-x
@@ -501,7 +589,7 @@
 ;;         customize-group bookmark-plus'), click button `Commentary'.
 ;;
 ;;       . From the Emacs-Wiki Web site,
-;;         http://www.emacswiki.org/cgi-bin/wiki/BookmarkPlus.
+;;         http://www.emacswiki.org/BookmarkPlus.
 ;;
 ;;     - It is easy to recognize orphaned and invalid bookmarks.
 ;;
@@ -546,7 +634,7 @@
 ;;       jumping (visiting), setting, and help.  It gives you a
 ;;       bookmark browser, and lets you bookmark and tag files on the
 ;;       fly.  See (@> "Use Bookmark+ with Icicles") and
-;;       http://www.emacswiki.org/cgi-bin/wiki/Icicles.
+;;       http://www.emacswiki.org/Icicles.
  
 ;;(@* "Bookmark Basics")
 ;;  ** Bookmark Basics **
@@ -635,6 +723,7 @@
 ;;  reflects it imperfectly, because it is a snapshot).  So if the
 ;;  bookmark file that is loaded is different from the one that was
 ;;  recorded for the display state, the recorded state is ignored.
+;;
 ;;
 ;;(@* "Automatic Saving")
 ;;  *** Automatic Saving ***
@@ -811,7 +900,7 @@
 ;;  for the bookmarks that belong to a given project.
 ;;
 ;;  One way to define such a command is to first mark the bookmarks
-;;  that you want to be the completion candidates, then use `M-c'
+;;  that you want to be the completion candidates, then use `C-c C-j'
 ;;  (command `bmkp-bmenu-define-jump-marked-command') in the bookmark
 ;;  list.
 ;;
@@ -833,14 +922,93 @@
 ;;  bookmark from such a navigation list, use `C-x j N' or `C-x 4 j N'
 ;;  (`bmkp-jump-in-navlist' or `bmkp-jump-in-navlist-other-window').
  
-;;(@* "Bookmark Tags")
-;;  ** Bookmark Tags **
+;;(@* "Bookmark Annotations")
+;;  ** Bookmark Annotations **
 ;;
 ;;  With Bookmark+ you can bookmark many kinds of Emacs object.
 ;;  Bookmarks record locations - that is their primary purpose.  They
 ;;  can also record annotations: general free-text descriptions of
-;;  your choosing.
+;;  your choosing.  An annotation is thus metadata that is associated
+;;  with a bookmark.  You can use it for any purpose you like.
 ;;
+;;  Command `bookmark-show-annotation' shows an annotation in
+;;  read-only mode.  You can use `C-x C-q' in the annotation buffer to
+;;  switch to edit mode (and back again).
+;;
+;;  You can use command `bookmark-edit-annotation' or `bmkp-annotate'
+;;  anywhere to edit the annotation for a bookmark.  For
+;;  `bookmark-edit-annotation', you can choose among the bookmarks
+;;  that already have annotations.  With a prefix arg, you can choose
+;;  any bookmark (and so create an annotation).  Using `bmkp-annotate'
+;;  is the same as using `bookmark-edit-annotation' with a prefix arg.
+;;
+;;  In the annotation edit buffer, make your changes and then use `C-c
+;;  C-c' to save the result.  Use `C-x C-k' if you do not want to save
+;;  the changes.  You can also use `C-x C-q' and then `y' to confirm
+;;  reverting the changes.
+;;
+;;  Non-`nil' user option `bookmark-automatically-show-annotations'
+;;  means that a bookmark's annotation is popped up whenever you jump
+;;  to the bookmark.  If the non-`nil' value is `edit' then the
+;;  annotation buffer is in edit mode; if it is any other non-`nil'
+;;  value then the buffer is in show (read-only) mode.
+;;
+;;  In the `*Bookmark List*' display, you can use `a' to show or (with
+;;  a prefix arg) edit the existing annotation for the bookmark on the
+;;  current line.  (Bookmarks with annotations are marked by an `a' to
+;;  the left of the bookmark name.)
+;;
+;;  A bookmark annotation is stored as part of the bookmark itself.
+;;  For this reason, you typically want to keep the text fairly short.
+;;  In Bookmark+, the mode for viewing and editing a bookmark
+;;  annotation is Org mode, by default.  (To change the mode used,
+;;  customize option `bmkp-annotation-modes-inherit-from'.)
+;;
+;;  You can obtain the effect of using longer annotations, and some
+;;  other advantages as well, by using "external annotations".  These
+;;  are annotations that are short and serve only as pointers to
+;;  external files, URLs, or other bookmarks.
+;;
+;;  Whenever you show the annotation of a bookmark (via `a' in the
+;;  `*Bookmark List*' display, `bookmark-show-annotation', or
+;;  `bookmark-automatically-show-annotations') and the annotation is
+;;  such a pointer, the effect is to visit the destination.
+;;
+;;  So for example, you can use bookmarks to one or more Org files to
+;;  annotate (provide metadata for) one or more other bookmarks.
+;;
+;;  You create an external annotation for a bookmark by using one of
+;;  these forms as the annotation text.
+;;
+;;     bmkp-annot-url: "FILE"
+;;     bmkp-annot-url: "URL"
+;;     bmkp-annot-url: "BOOKMARK"
+;;
+;;  * FILE is an absolute file name.  It is handled by
+;;    `find-file-other-window'.
+;;  * URL is a URL.  It is handled by `browse-url'.
+;;  * BOOKMARK is the name of a bookmark in the current bookmark
+;;    alist.
+;;
+;;  The double-quote characters are necessary here, so that you can
+;;  include characters such as `SPC' in the name.  The text must be on
+;;  the first line of the annotation (not counting the commented
+;;  instruction lines).  It can be preceded only by whitespace.
+;;
+;;  You can include other text in the annotation, after the
+;;  destination specification, and you can see or edit it when you
+;;  edit the annotation (e.g., using `C-u a' in buffer `*Bookmark
+;;  List*'), but it is ignored when the annotation is "shown" (e.g.,
+;;  using `a').
+;;
+;;  In the `*Bookmark List*' display, `M-down' and `M-up' move the
+;;  cursor down and up a line, respectively, but they also show the
+;;  annotation, if any, of the bookmark at the new cursor location.
+ 
+;;(@* "Bookmark Tags")
+;;  ** Bookmark Tags **
+;;
+;;  In addition to annotating bookmarks with arbitrary metadata,
 ;;  Bookmark+ bookmarks can also be tagged, as a way to organize them,
 ;;  which also means as a way to organize the objects that are
 ;;  bookmarked.
@@ -876,10 +1044,16 @@
 ;;  the files, you can use them with tags to organize the files and
 ;;  thus operate on subsets of them.
 ;;
+;;  And if you use libraries `Dired+' and `highlight.el' then
+;;  autofiles are highlighted specially in Dired, and the highlighting
+;;  indicates whether the file is tagged.
+;;
 ;;  By default, you create bookmarks without tags and add tags to them
 ;;  later.  If you prefer, you can customize option
 ;;  `bmkp-prompt-for-tags-flag' to non-`nil' so that you are prompted
-;;  to add tags immediately whenever you set (create) a bookmark.
+;;  to add tags immediately whenever you set (create or update) a
+;;  bookmark.  
+;;
 ;;  There are also some commands, such as `bmkp-tag-a-file' (`C-x p t
 ;;  + a') and `bmkp-untag-a-file' (`C-x p t - a'), that always prompt
 ;;  for tags to add or remove.  (In general, the key `a' is used in
@@ -1146,6 +1320,7 @@
 ;;  menus.  The menus provide quick reminders of the available keys,
 ;;  as does the help from `?' in the bookmark-list display.
 ;;
+;;
 ;;(@* "Bookmark Records: What A Bookmark Looks Like")
 ;;  *** Bookmark Records: What A Bookmark Looks Like ***
 ;;
@@ -1157,28 +1332,27 @@
 ;;  here.
 ;;
 ;;  A bookmark record is nothing more than a list whose first element
-;;  is a string, the bookmark name.  The other list elements can be
-;;  thought of as attributes that define the bookmark: its data.  Each
-;;  such attribute is a cons: a nonempty list or a dotted list.
+;;  is a string, the bookmark name.  The other list elements are
+;;  properties: key+value pairs that define the bookmark data.  Each
+;;  such pair is a cons: a nonempty list or a dotted list.
 ;;
-;;  The car of the attribute is its name (a Lisp symbol).  The cdr is
-;;  its value.  What the value can be depends on the attribute - in
+;;  The car of the property is its name (a Lisp symbol).  The cdr is
+;;  its value.  What the value can be depends on the property - in
 ;;  general it can be any Lisp value (number, string, list, symbol,
-;;  etc.).  An attribute with a null cdr means the same thing as
-;;  having no such attribute present.  For example, having the empty
-;;  attribute `(tags)' is the same as having to `tags' attribute at
-;;  all.
+;;  etc.).  A property with a null cdr means the same thing as having
+;;  no such property present.  For example, having the empty property
+;;  `(tags)' is the same as having no `tags' property at all.
 ;;
-;;  There is nothing more to it: attributes can be anything you like,
+;;  There is nothing more to it: properties can be anything you like,
 ;;  provided you provide some code to recognize them and do something
 ;;  with them.
 ;;
-;;  Of course, the types of attributes you use most (maybe always) are
+;;  Of course, the types of properties you use most (maybe always) are
 ;;  predefined, and the vanilla `bookmark.el' code and the Bookmark+
 ;;  code recognize and use them.  The most important and most typical
-;;  attribute is this: `(filename . "/some/file/name.txt")', that is,
-;;  a cons whose car is the symbol `filename' and whose cdr is the
-;;  name (a string) of the bookmarked file.
+;;  property is this: `(filename . "/some/file/name.txt")', that is, a
+;;  cons whose car is the symbol `filename' and whose cdr is the name
+;;  (a string) of the bookmarked file.
 ;;
 ;;  With that in mind, you can see that renaming a bookmark just means
 ;;  changing the string that is its car.  And relocating a bookmark
@@ -1187,19 +1361,19 @@
 ;;
 ;;  If you already have a bookmark file, typically `~/.emacs.bmk',
 ;;  take a look at the bookmark records in it.  A typical bookmark
-;;  also has these attributes, in addition to `filename': `position',
+;;  also has these properties, in addition to `filename': `position',
 ;;  `front-context-string', and `rear-context-string'.  You can guess
 ;;  what they are - if not, see the doc string of `bookmark-alist'.
 ;;
-;;  A Bookmark+ bookmark typically has some additional attributes that
-;;  you can also guess.  Attributes `time' and `visits' are updated
+;;  A Bookmark+ bookmark typically has some additional properties that
+;;  you can also guess.  Properties `time' and `visits' are updated
 ;;  automatically each time you access the bookmark.
 ;;
-;;  Some bookmarks have a `handler' attribute whose value is a
-;;  function that "jumps" to the bookmark "location".  I put those two
-;;  terms in quotes here because a handler is really just any function
-;;  - it can do anything you like, and there need not be any
-;;  associated location.
+;;  Some bookmarks have a `handler' property whose value is a function
+;;  that "jumps" to the bookmark "location".  I put those two terms in
+;;  quotes here because a handler is really just any function - it can
+;;  do anything you like, and there need not be any associated
+;;  location.
 ;;
 ;;  Some Bookmark+ bookmarks, including autofile bookmarks, just
 ;;  "jump" to a file.  The position in the file is unimportant, and
@@ -1207,8 +1381,8 @@
 ;;  In effect, such bookmarks are just wrappers around the file,
 ;;  letting you get the advantage of Bookmark+ features (tags etc.)
 ;;  for a file.  Such bookmarks, which you can create using `C-x p c
-;;  a' or `C-x p c f', contain a `file-handler' attribute instead of a
-;;  `handler' attribute.  The difference between the two is that the
+;;  a' or `C-x p c f', contain a `file-handler' property instead of a
+;;  `handler' property.  The difference between the two is that the
 ;;  `file-handler' value is a function (Lisp function or shell
 ;;  command) to be applied to the file, not to the bookmark.
 ;;
@@ -1225,24 +1399,24 @@
 ;;  And if each bookmark record after you edit it is a cons with a
 ;;  string car then your bookmarks are generally OK, even if you might
 ;;  have ruined the details of one or two of them.  Suppose you
-;;  somehow mistakenly delete the `a' in a `filename' attribute, for
+;;  somehow mistakenly delete the `a' in a `filename' property, for
 ;;  instance.  No big deal - that bookmark no longer has a
 ;;  recognizable target location, but the other bookmarks are still
 ;;  OK.
 ;;
-;;  The most important attribute for Bookmark+ users is probably
-;;  `tags'.  Its value (the cdr) is a list of strings or conses - the
-;;  bookmark's tags.  When you create a tag, it is typically a string
-;;  (just its name) - e.g. "blue".  If you then give it a value as
-;;  well, it becomes a cons with that string (the name) as car and the
-;;  value as cdr - e.g. `("blue" . 42)' or `("blue" moonbeam 42)' -
-;;  here the cdr is the list `(moonbeam 42)'.  Here is an example
-;;  `tags' attribute: `(tags "hegel" ("blue" . honeypot) "darwin")'.
-;;  Most of the time you will use strings as tags.  See also
-;;  (@> "Bookmark Tags Can Have Values").
+;;  The most important property for Bookmark+ users (aside from
+;;  `filename') is probably `tags'.  Its value (the cdr) is a list of
+;;  strings or conses - the bookmark's tags.  When you create a tag,
+;;  it is typically a string (just its name) - e.g. "blue".  If you
+;;  then give it a value as well, it becomes a cons with that string
+;;  (the name) as car and the value as cdr - e.g. `("blue" . 42)' or
+;;  `("blue" moonbeam 42)' - here the cdr is the list `(moonbeam 42)'.
+;;  Here is an example of a `tags' property: `(tags "hegel" ("blue"
+;;  . honeypot) "darwin")'.  Most of the time you will use strings as
+;;  tags.  See also (@> "Bookmark Tags Can Have Values").
 ;;
 ;;  When you edit bookmark records, just try to stay away from
-;;  changing any attributes that you are not familiar with.  And make
+;;  changing any properties that you are not familiar with.  And make
 ;;  sure that when you're done you have a proper Lisp list (open
 ;;  parens closed etc.).  If you've never played with Lisp before, do
 ;;  not panic.
@@ -1256,6 +1430,16 @@
 ;;  typically drop the dot and the list's parens: We write `(b)'
 ;;  instead of `(b . ())' and `(a b)' instead of `(a . (b))' or `(a
 ;;  . (b . ()))'.
+;;
+;;  Finally, remember that when you set an existing bookmark again,
+;;  e.g., you use `C-x r m' and provide the name of an existing
+;;  bookmark, the existing properties are generally lost.  Some are
+;;  automatically updated.  Any that you might have added by editing
+;;  are lost, and any that are provided by default by the bookmark
+;;  handler are replaced.  The only exceptions to this are the
+;;  properties listed in option `bmkp-properties-to-keep', which by
+;;  default means properties `tags' and `annotation'.  Any existing
+;;  tags and annotation are preserved when you update a bookmark.
  
 ;;(@* "Bookmark-List Views - Saving and Restoring State")
 ;;  ** Bookmark-List Views - Saving and Restoring State **
@@ -1324,7 +1508,7 @@
 ;;  bookmark restores all of these.
 ;;
 ;;  Alternatively, you can define a command that does the same thing,
-;;  but without creating another bookmark - use `c'
+;;  but without creating another bookmark - use `C-c C-c'
 ;;  (`bmkp-bmenu-define-command') in the bookmark list to do this.
 ;;  You are prompted for the name of the new command.  Use the command
 ;;  anytime (including in another Emacs session) to restore the
@@ -1343,13 +1527,13 @@
 ;;  saved, in order to save disk space and save/restore time.
 ;;
 ;;  Sometimes, however, you really want to save the entire
-;;  bookmark-list state, creating a full snapshot.  You can use `C'
-;;  (`bmkp-bmenu-define-full-snapshot-command') to do that.  This
-;;  defines a command that restores the bookmark list completely.
-;;  That is the same thing that happens automatically (by default)
-;;  whenever you quit the bookmark list (or Emacs), but defining
-;;  snapshot commands lets you have multiple saved states and switch
-;;  to them at will.
+;;  bookmark-list state, creating a full snapshot.  You can use `C-c
+;;  C-C' (aka `C-c C-S-c', `bmkp-bmenu-define-full-snapshot-command')
+;;  to do that.  This defines a command that restores the bookmark
+;;  list completely.  That is the same thing that happens
+;;  automatically (by default) whenever you quit the bookmark list (or
+;;  Emacs), but defining snapshot commands lets you have multiple
+;;  saved states and switch to them at will.
 ;;
 ;;  Be aware, however, that full-snapshot command definitions can be
 ;;  quite large, since they each contain a copy of the current
@@ -1548,7 +1732,7 @@
 ;;  When a bookmark is created using `C-x p c f' or `C-x p c a' for a
 ;;  file that matches `bmkp-default-handlers-for-file-types', the
 ;;  shell command or Lisp function that "jumps to" (opens) the file is
-;;  saved in the bookmark as attribute `file-handler' (not `handler').
+;;  saved in the bookmark as property `file-handler' (not `handler').
 ;;
 ;;
 ;;(@* "Opening Bookmarks Using Windows File Associations")
@@ -1568,7 +1752,7 @@
 ;;
 ;;    `M-RET'     - `bmkp-bmenu-w32-open'
 ;;    `M-mouse-2' - `bmkp-bmenu-w32-open-with-mouse'
-;;    `M-o'       - `bmkp-bmenu-w32-open-select'
+;;    `M-o'       - `bmkp-bmenu-w32-jump-to-marked'
 ;;
 ;;  Windows file associations are always available to you, in addition
 ;;  to any other file associations that you define using
@@ -1665,6 +1849,10 @@
 ;;  * `file-cache-add-file-list'
 ;;
 ;;  See the Emacs manual, node `File Name Cache'.
+;;
+;;  Finally, if you use libraries `Dired+' and `highlight.el' then
+;;  autofiles are highlighted specially in Dired, and the highlighting
+;;  indicates whether the file is tagged.
 ;;
 ;;
 ;;(@* "A Type-Aware `find-file'")
@@ -1970,6 +2158,39 @@
 ;;  using command `bookmark-delete' (`C-x p d') or, in the bookmark
 ;;  list, using `d' plus `x' or marking then `D'.
 ;;
+;;  Deleting bookmarks from a bookmark file is one way of editing it.
+;;  Another is to copy or move bookmarks from one bookmark file to
+;;  another.  In the bookmark-list display, you can copy or move the
+;;  marked bookmarks (or the current bookmark, if none are marked)
+;;  from the current bookmark file to another that you name, using `Y
+;;  > +' (`bmkp-bmenu-copy-marked-to-bookmark-file') and `Y > -'
+;;  (`bmkp-bmenu-move-marked-to-bookmark-file'), respectively.  And
+;;  you can use `Y > 0'
+;;  (`bmkp-bmenu-create-bookmark-file-from-marked') to create a new
+;;  bookmark file by copying the marked bookmarks.  With a prefix arg,
+;;  `Y > 0' creates also a bookmark-file bookmark.
+;;
+;;  NOTE:
+;;
+;;    Unlike the other ways of organizing bookmarks into sets (tags,
+;;    bookmark-list bookmarks, etc.) bookmark files represent
+;;    physical, not logical, groupings of bookmarks.  A bookmark file
+;;    contains complete bookmark records.
+;;
+;;    If you copy a bookmark from one bookmark file to another, the
+;;    copy is an independent bookmark: it has no relation to the
+;;    bookmark it was copied from.  Changes to the copy or the
+;;    bookmark it was copied from do not affect each other.
+;;
+;;    This means that to use bookmark files for organizing bookmarks
+;;    you will typically move, not copy, bookmarks between them (or
+;;    copy and later delete).  Remember that you can load multiple
+;;    bookmark files to access their bookmarks together in a session.
+;;    Think of your bookmark files as independent modules that you can
+;;    combine.
+;;
+;;  See Also: (@> "Bookmark+ Load Order and Option `bookmark-default-file'").
+;;
 ;;
 ;;(@* "Bookmark-File Bookmarks")
 ;;  *** Bookmark-File Bookmarks ***
@@ -1986,7 +2207,7 @@
 ;;  You use command `bmkp-set-bookmark-file-bookmark', bound to `C-x p
 ;;  y', to create a bookmark-file bookmark.  Jumping to such a
 ;;  bookmark just loads the bookmark file that it records.  With `C-u'
-;;  (e.g. `C-u C-x p j project-foo'), jumping switches bookmark files.
+;;  (e.g. `C-u C-x j y project-foo'), jumping switches bookmark files.
 ;;  Without `C-u' it accumulates the loaded bookmarks.
 ;;
 ;;  A bookmark-file bookmark is not only an added convenience.  You
@@ -2414,6 +2635,18 @@
 ;;  You can un-omit all of the omitted bookmarks at once, using `- U'
 ;;  (`bmkp-unomit-all').  You can also call this command from outside
 ;;  the bookmark-list display.
+;;
+;;  Omitted bookmarks that are marked are generally not included when
+;;  you use a command that acts on the marked bookmarks.  However, if
+;;  you use a negative prefix argument with the command then they are.
+;;
+;;  For some commands this is relaxed so that any prefix arg has this
+;;  effect.  For other commands a non-negative prefix arg has a
+;;  different effect.  In some cases, a non-negative prefix arg has
+;;  one effect and a non-positive prefix arg has the effect of
+;;  including omitted marked bookmarks, so that a zero prefix arg has
+;;  both effects.  For any given command, consult the doc string for
+;;  full information.
 ;;
 ;;
 ;;(@* "Sorting Bookmarks")
@@ -2913,6 +3146,7 @@
 ;;  temporary?  Or what if you want to toggle whether particular
 ;;  bookmarks get saved automatically?
 ;;
+;;
 ;;(@* "Temporary Bookmarking Mode")
 ;;  *** Temporary Bookmarking Mode ***
 ;;
@@ -2950,6 +3184,7 @@
 ;;  In the bookmark-list display, temporary bookmarking mode is
 ;;  indicated in the mode line by `TEMPORARY Bookmarking' in place of
 ;;  `Bookmarks' as the mode name.
+;;
 ;;
 ;;(@* "Making Bookmarks Temporary")
 ;;  *** Making Bookmarks Temporary ***
@@ -3283,11 +3518,71 @@
 ;;  * `C-x p C-down', `C-x p C-up' - Cycle to the next and previous
 ;;                                   highlighted bookmark.
  
+;;(@* "Bookmark Links")
+;;  ** Bookmark Links **
+;;
+;;  You can use command `bmkp-insert-bookmark-link' to create links in
+;;  any Emacs text that jump to particular bookmarks when you follow
+;;  them (by hitting `RET' or clicking `mouse-2').  If you hit `?' or
+;;  double-click `mouse-1' on such a bookmark link then the bookmark
+;;  is described, showing the same information as `C-x p ?'
+;;  (`bmkp-describe-bookmark').
+;;
+;;  You are prompted for the bookmark to link.  If the region is
+;;  active and nonempty then the link is put on its text.  Otherwise,
+;;  you are prompted for the link text, which is inserted.  The
+;;  default link text is the bookmark name in this case.
+;;
+;;  The bookmark linked can be of any type.
+;;
+;;  This simple feature lets you easily create "launching pads" for
+;;  different sets of bookmarks: buffers or files that consist of
+;;  bookmark links and any other text you like.  This gives you yet
+;;  another way to organize bookmarks (and so also the files,
+;;  directories, etc. that they target).
+;;
+;;  If you also use library `font-lock+.el' then the links appear with
+;;  face `link', even in a font-locked buffer.  (Library
+;;  `font-lock+.el' just provides this feature of allowing
+;;  non-font-lock highlighting in a font-locked buffer.  See
+;;  http://lists.gnu.org/archive/html/emacs-devel/2014-08/msg00540.html.)
+;;
+;;  The links you create this way are not persistent, but you can of
+;;  course re-create them using Lisp.
+;;
+;;
+;;(@* "Org Mode Links that Jump To Bookmarks")
+;;  *** Org Mode Links that Jump To Bookmarks ***
+;;
+;;  You can also easily define Org-mode links that jump to bookmarks.
+;;  These links are persistent.  Again, the bookmark linked can be of
+;;  any type.
+;;
+;;  You can use the standard Org command `org-store-link' (`C-c l') in
+;;  buffer `*Bookmark List*' to store a link to the bookmark at point.
+;;
+;;  Outside buffer `*Bookmark List*' you can use command
+;;  `bmkp-store-org-link' to store a link to any bookmark.  You are
+;;  prompted for the bookmark name.  You can even enter the name of a
+;;  bookmark that does not yet exist.
+;;
+;;  If you use a numeric prefix arg with either command then the
+;;  bookmark link stored will be for jumping to the bookmark in the
+;;  same window.  Without a numeric prefix arg, the link will use
+;;  another window.  (Org mode defines other behaviors for non-numeric
+;;  prefix args, such as `C-u C-u'.)
+;;
+;;  As usual, to insert a bookmark link, you use command
+;;  `org-insert-link'.  Enter the name of the target bookmark at the
+;;  prompt.  In Org mode you can use the usual Org key bindings to
+;;  follow the link.  In any mode you can use standard Org command
+;;  `org-open-at-point-global' (not bound to a key by default).
+ 
 ;;(@* "Use Bookmark+ with Icicles")
 ;;  ** Use Bookmark+ with Icicles **
 ;;
-;;  `Icicles' (http://www.emacswiki.org/cgi-bin/wiki/Icicles) enhances
-;;  your use of Bookmark+ in several ways.
+;;  `Icicles' (http://www.emacswiki.org/Icicles) enhances your use of
+;;  Bookmark+ in several ways.
 ;;
 ;;  When jumping to a bookmark, you can narrow the completion
 ;;  candidates to bookmarks of a particular type (e.g. Info, using
@@ -3313,15 +3608,15 @@
 ;;  Otherwise, set a bookmark using
 ;;  `bmkp-bookmark-set-confirm-overwrite', as follows:
 ;;
-;;  * Numeric prefix arg (non-negative): No prompt.  Use the buffer
+;;  * No prefix arg: Prompt for the bookmark name.  The candidates are
+;;    bookmarks in the current buffer (or all bookmarks if there are
+;;    none in the current buffer).
+;;
+;;  * (Non-negative) numeric prefix arg: No prompt.  Use the buffer
 ;;    name plus the text of the region (if active) or the current line
 ;;    as the bookmark name.  Quickest way to set a bookmark.
 ;;
-;;  * No prefix arg: same as `bmkp-bookmark-set-confirm-overwrite'
-;;    (prompt for name).
-;;
-;;  * Plain `C-u': same as `bmkp-bookmark-set-confirm-overwrite'
-;;    (prompt for name, no bookmark overwrite.
+;;  * Plain `C-u': Prompt for name, no bookmark overwrite.
 ;;
 ;;  During completion of a bookmark name, many features of the
 ;;  bookmark-list display (see (@> "The Bookmark List Display")) are
@@ -3389,6 +3684,27 @@
 ;;
 ;;  * Remove tags from one or more files (autofile bookmarks), using
 ;;    `C-x a -'.
+;;
+;;  There are 25 Icicles commands for searching bookmark destinations!
+;;  The most general is `icicle-search-bookmark'.  Others let you
+;;  search specific kinds of bookmarks, or bookmarks having various
+;;  combinations of tags.
+;;
+;;  During Icicles search (of anything, not just a bookmark
+;;  destination), you can save sets of completion candidates, which
+;;  means sets of search hits, as bookmarks.  And Icicles lets you use
+;;  set operations (complement, union, intersection, difference etc.)
+;;  on the current set of search hits.
+;;
+;;  When you "jump" to an Icicles search-hits bookmark, its recorded
+;;  search hits are restored to Icicles search as completion
+;;  candidates, either replacing the current candidates or adding to
+;;  them.
+;;
+;;  You can thus save and later return to different sets of search
+;;  results using different bookmarks.  You can "jump" to an Icicles
+;;  search-hits bookmark during any Icicles search, whether you search
+;;  a file, a buffer, multiple files, or multiple buffers.
  
 ;;(@* "Bookmark Compatibility with Vanilla Emacs (`bookmark.el')")
 ;;  ** Bookmark Compatibility with Vanilla Emacs (`bookmark.el') **
@@ -3489,8 +3805,8 @@
 ;;  Note that when the option value is non-`nil', propertized bookmark
 ;;  names are saved not only to your bookmark file but also to any
 ;;  full snapshots you create of the bookmark-list display state using
-;;  command `bmkp-bmenu-define-full-snapshot-command'.
-;;  See (@> "State-Restoring Commands and Bookmarks").
+;;  command `bmkp-bmenu-define-full-snapshot-command' (`C-c C-C', aka
+;;  `C-c C-S-c').  See (@> "State-Restoring Commands and Bookmarks").
  
 ;;(@* "New Bookmark Structure")
 ;;  ** New Bookmark Structure **
